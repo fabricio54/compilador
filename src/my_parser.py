@@ -1,4 +1,5 @@
-from lexer import Lexer, TokenType
+from lexer import Lexer
+from lexer import TokenType
 
 class Parser:
     def __init__(self, text):
@@ -13,45 +14,55 @@ class Parser:
             if token[0] == TokenType.EOF:
                 break
         return tokens
-    
-    def eat(self, expected_type):
-        if self.current_token[0] == expected_type:
-            self.current_token = self.lexer.get_next_token()
-        else:
-            raise ValueError(f"Token inesperado: {self.current_token}")
 
-    def factor(self):
-        token = self.current_token
-        if token[0] == TokenType.CONST_INT:
-            self.eat(TokenType.CONST_INT)
-            return token[1]
-        elif token[0] == TokenType.CONST_FLOAT:
-            self.eat(TokenType.CONST_FLOAT)
-            return token[1]
-        elif token[0] == TokenType.ABRE_PAR:
-            self.eat(TokenType.ABRE_PAR)
-            result = self.expression()
-            self.eat(TokenType.FECHA_PAR)
-            return result
+    def is_prefix(self, expression):
+        def is_valid_prefix(tokens):
+            if not tokens:
+                return False
+            token = tokens.pop(0)
+            if token in operators:
+                left_valid = is_valid_prefix(tokens)
+                right_valid = is_valid_prefix(tokens)
+                return left_valid and right_valid
+            elif token.isdigit():
+                return True
+            else:
+                return False
 
-    def term(self):
-        result = self.factor()
-        while self.current_token[0] in (TokenType.OP_MUL, TokenType.OP_DIV):
-            if self.current_token[0] == TokenType.OP_MUL:
-                self.eat(TokenType.OP_MUL)
-                result *= self.factor()
-            elif self.current_token[0] == TokenType.OP_DIV:
-                self.eat(TokenType.OP_DIV)
-                result /= self.factor()
-        return result
+        operators = set(['+', '-', '*', '/'])
+        tokens = expression.split()
 
-    def expression(self):
-        result = self.term()
-        while self.current_token[0] in (TokenType.OP_SUM, TokenType.OP_SUB):
-            if self.current_token[0] == TokenType.OP_SUM:
-                self.eat(TokenType.OP_SUM)
-                result += self.term()
-            elif self.current_token[0] == TokenType.OP_SUB:
-                self.eat(TokenType.OP_SUB)
-                result -= self.term()
-        return result
+        # A expressão prefixa deve ter mais de um token
+        if len(tokens) < 3:
+            return False
+
+        # A expressão prefixa deve começar com um operador
+        if tokens[0] not in operators:
+            return False
+
+        return is_valid_prefix(tokens)
+
+    def is_infix(self, expression):
+        def is_valid_infix(tokens):
+            operand_expected = True
+            for token in tokens:
+                if token in operators:
+                    if operand_expected:
+                        return False
+                    operand_expected = True
+                elif token.isdigit():
+                    if not operand_expected:
+                        return False
+                    operand_expected = False
+                else:
+                    return False
+            return not operand_expected
+
+        operators = set(['+', '-', '*', '/'])
+        tokens = expression.split()
+
+        # A expressão infixa deve ter mais de dois tokens
+        if len(tokens) < 3:
+            return False
+
+        return is_valid_infix(tokens)
